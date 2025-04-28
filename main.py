@@ -91,20 +91,34 @@ class Calculator(QWidget):
         else:
             super().keyPressEvent(event)
 
-    def on_click(self, ch):
-        if self._just_evaluated and ch in "+-*/":
+        def on_click(self, ch):
+        # 1) Ignore repeated “=” so we don’t lose precision
+        if ch == '=' and self._just_evaluated:
+            return
+
+        # 2) After “=”, a digit click means start a new number
+        if self._just_evaluated and ch in '0123456789.':
+            self.display.clear()
+            self._just_evaluated = False
+
+        # 3) After “=”, an operator chains using the full-precision raw_value
+        if self._just_evaluated and ch in '+-*/':
             base = str(self._raw_value)
             self.display.setText(f"{base} {ch} ")
             self._just_evaluated = False
             return
 
-        if ch in "0123456789.":
+        # 4) Normal behavior for digits/operators/C/=
+        if ch in '0123456789.':
             self.display.setText(self.display.text() + ch)
-        elif ch in "+-*/":
-            self.display.setText(self.display.text() + f" {ch} ")
-        elif ch == "C":
+
+        elif ch in '+-*/':
+            self.display.setText(self.display.text() + f' {ch} ')
+
+        elif ch == 'C':
             self.display.clear()
-        elif ch == "=":
+
+        elif ch == '=':
             expr = self.display.text()
             result = evaluate(expr)
             if result is None:
@@ -112,12 +126,13 @@ class Calculator(QWidget):
             else:
                 self._raw_value = result
                 if decimal_places is not None:
-                    quant = Decimal("1." + ("0" * decimal_places))
+                    quant = Decimal('1.' + ('0'*decimal_places))
                     disp = result.quantize(quant)
                 else:
                     disp = result
                 self.display.setText(str(disp))
             self._just_evaluated = True
+
 
 
 def main():
