@@ -22,8 +22,6 @@ getcontext().prec = precision
 
 # ─── Evaluation helper ─────────────────────────────────────────────────────────
 def evaluate(expr: str):
-    """Wrap every number literal as Decimal("…") and safely eval."""
-
     def wrap_num(m):
         return f'Decimal("{m.group(0)}")'
 
@@ -43,8 +41,8 @@ class Calculator(QWidget):
         self.display.setReadOnly(True)
         self.display.setAlignment(Qt.AlignRight)
 
-        self._raw_value = None  # holds full-precision Decimal
-        self._just_evaluated = False  # flag after “=” pressed
+        self._raw_value = None
+        self._just_evaluated = False
 
         grid = QGridLayout(self)
         grid.addWidget(self.display, 0, 0, 1, 4)
@@ -73,13 +71,27 @@ class Calculator(QWidget):
             btn.clicked.connect(lambda _, t=txt: self.on_click(t))
             grid.addWidget(btn, r, c)
 
-    def on_click(self, ch):
-        # If we just hit “=”, and now press a digit → start fresh
-        if self._just_evaluated and ch in "0123456789.":
+    def keyPressEvent(self, event):
+        text = event.text()
+        if self._just_evaluated and text in "0123456789.":
+            # start new entry after =
             self.display.clear()
             self._just_evaluated = False
 
-        # If “=” then operator → chain using full-precision raw
+        if text in "0123456789.":
+            self.on_click(text)
+        elif text in "+-*/":
+            self.on_click(text)
+        elif text == "=":
+            self.on_click("=")
+        elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self.on_click("=")
+        elif event.key() == Qt.Key_Backspace:
+            self.on_click("C")
+        else:
+            super().keyPressEvent(event)
+
+    def on_click(self, ch):
         if self._just_evaluated and ch in "+-*/":
             base = str(self._raw_value)
             self.display.setText(f"{base} {ch} ")
@@ -88,21 +100,17 @@ class Calculator(QWidget):
 
         if ch in "0123456789.":
             self.display.setText(self.display.text() + ch)
-
         elif ch in "+-*/":
             self.display.setText(self.display.text() + f" {ch} ")
-
         elif ch == "C":
             self.display.clear()
-
         elif ch == "=":
             expr = self.display.text()
             result = evaluate(expr)
             if result is None:
                 self.display.setText("Error")
             else:
-                self._raw_value = result  # store full-precision
-                # quantize only for display
+                self._raw_value = result
                 if decimal_places is not None:
                     quant = Decimal("1." + ("0" * decimal_places))
                     disp = result.quantize(quant)
