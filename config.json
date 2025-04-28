@@ -1,4 +1,14 @@
 {
     "precision": 28,
-    "decimal_places": 2
+    "decimal_places": 2,
+    "strip_trailing_zeros": true,
+    "use_commas": true,
+    "allow_parentheses": true,
+    "max_history": 50,
+    "theme": "light",
+    "font_size": 14,
+    "window_size": {
+        "width": 400,
+        "height": 300
+    }
 }
