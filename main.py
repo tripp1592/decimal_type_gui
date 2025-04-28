@@ -1,0 +1,123 @@
+# main.py
+
+import json
+import re
+from decimal import Decimal, getcontext
+from pathlib import Path
+
+from PySide6.QtWidgets import QApplication, QWidget, QGridLayout, QLineEdit, QPushButton
+from PySide6.QtCore import Qt
+
+# ─── Load settings ─────────────────────────────────────────────────────────────
+cfg_path = Path(__file__).parent / "config.json"
+if not cfg_path.exists():
+    raise FileNotFoundError(f"Missing config.json at {cfg_path}")
+with open(cfg_path, "r") as f:
+    cfg = json.load(f)
+
+precision = cfg.get("precision", 28)
+decimal_places = cfg.get("decimal_places", None)
+getcontext().prec = precision
+
+
+# ─── Evaluation helper ─────────────────────────────────────────────────────────
+def evaluate(expr: str):
+    """Wrap every number literal as Decimal("…") and safely eval."""
+
+    def wrap_num(m):
+        return f'Decimal("{m.group(0)}")'
+
+    safe = re.sub(r"\d+(\.\d+)?", wrap_num, expr)
+    try:
+        return eval(safe, {"__builtins__": None}, {"Decimal": Decimal})
+    except Exception:
+        return None
+
+
+# ─── Calculator UI ─────────────────────────────────────────────────────────────
+class Calculator(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Decimal Calculator")
+        self.display = QLineEdit()
+        self.display.setReadOnly(True)
+        self.display.setAlignment(Qt.AlignRight)
+
+        self._raw_value = None  # holds full-precision Decimal
+        self._just_evaluated = False  # flag after “=” pressed
+
+        grid = QGridLayout(self)
+        grid.addWidget(self.display, 0, 0, 1, 4)
+
+        buttons = [
+            ("7", 1, 0),
+            ("8", 1, 1),
+            ("9", 1, 2),
+            ("/", 1, 3),
+            ("4", 2, 0),
+            ("5", 2, 1),
+            ("6", 2, 2),
+            ("*", 2, 3),
+            ("1", 3, 0),
+            ("2", 3, 1),
+            ("3", 3, 2),
+            ("-", 3, 3),
+            ("0", 4, 0),
+            (".", 4, 1),
+            ("=", 4, 2),
+            ("+", 4, 3),
+            ("C", 5, 0),
+        ]
+        for txt, r, c in buttons:
+            btn = QPushButton(txt)
+            btn.clicked.connect(lambda _, t=txt: self.on_click(t))
+            grid.addWidget(btn, r, c)
+
+    def on_click(self, ch):
+        # If we just hit “=”, and now press a digit → start fresh
+        if self._just_evaluated and ch in "0123456789.":
+            self.display.clear()
+            self._just_evaluated = False
+
+        # If “=” then operator → chain using full-precision raw
+        if self._just_evaluated and ch in "+-*/":
+            base = str(self._raw_value)
+            self.display.setText(f"{base} {ch} ")
+            self._just_evaluated = False
+            return
+
+        if ch in "0123456789.":
+            self.display.setText(self.display.text() + ch)
+
+        elif ch in "+-*/":
+            self.display.setText(self.display.text() + f" {ch} ")
+
+        elif ch == "C":
+            self.display.clear()
+
+        elif ch == "=":
+            expr = self.display.text()
+            result = evaluate(expr)
+            if result is None:
+                self.display.setText("Error")
+            else:
+                self._raw_value = result  # store full-precision
+                # quantize only for display
+                if decimal_places is not None:
+                    quant = Decimal("1." + ("0" * decimal_places))
+                    disp = result.quantize(quant)
+                else:
+                    disp = result
+                self.display.setText(str(disp))
+            self._just_evaluated = True
+
+
+def main():
+    app = QApplication([])
+    win = Calculator()
+    win.show()
+    app.exec()
+
+
+if __name__ == "__main__":
+    main()
