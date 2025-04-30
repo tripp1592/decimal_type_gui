@@ -3,10 +3,18 @@ import json
 import re
 import sys
 from decimal import Decimal, getcontext
-from PyQt6.QtWidgets import QApplication, QWidget, QLineEdit, QPushButton, QGridLayout
+import qdarkstyle
+from PyQt6.QtWidgets import (
+    QApplication,
+    QWidget,
+    QLineEdit,
+    QPushButton,
+    QGridLayout,
+    QSizePolicy,
+)
 from PyQt6.QtCore import Qt
 
-# ── load config ─────────────────────────────────────────────────────────────
+# ── Load config.json ───────────────────────────────────────────────────────
 with open("config.json", "r") as f:
     cfg = json.load(f)
 
@@ -14,51 +22,51 @@ getcontext().prec = cfg["precision"]
 decimal_places = cfg.get("decimal_places", 2)
 theme = cfg.get("theme", "light").lower()
 
-# ── helper: wrap all numeric literals in Decimal('…') ─────────────────────────
+# ── Helper: wrap all numeric literals in Decimal('…') ───────────────────────
 _decimal_pattern = re.compile(r"(\d+(\.\d+)?)")
 
 
 def to_decimal_expr(txt: str) -> str:
-    # e.g. "1+2.5" → "Decimal('1')+Decimal('2.5')"
     return _decimal_pattern.sub(lambda m: f"Decimal('{m.group(1)}')", txt)
 
 
-# ── app + optional dark theme ───────────────────────────────────────────────
+# ── Create QApplication & apply QDarkStyle if dark theme ──────────────────
 app = QApplication([])
-
 if theme == "dark":
-    palette = app.palette()
-    palette.setColor(palette.ColorRole.Window, Qt.GlobalColor.black)
-    palette.setColor(palette.ColorRole.WindowText, Qt.GlobalColor.white)
-    app.setPalette(palette)
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt6())
 
-# ── main window & layout ────────────────────────────────────────────────────
+# ── Main window & grid layout ──────────────────────────────────────────────
 win = QWidget()
 win.setWindowTitle("Decimal Calculator")
 layout = QGridLayout(win)
+layout.setContentsMargins(12, 12, 12, 12)
+layout.setSpacing(8)
 
-# display
+# ── Display widget ─────────────────────────────────────────────────────────
 disp = QLineEdit()
 disp.setReadOnly(True)
 disp.setAlignment(Qt.AlignmentFlag.AlignRight)
 disp.setFixedHeight(40)
 layout.addWidget(disp, 0, 0, 1, 4)
 
-expr = ""  # holds the raw user input
+# ── Expression state ───────────────────────────────────────────────────────
+expr = ""
 
 
-def update(txt: str):
+def update_display(txt: str):
     global expr
     expr = txt
     disp.setText(txt)
 
 
-# calculation logic using wrapped Decimal literals
+def clear_display():
+    update_display("")
+
+
 def calculate():
     global expr
     try:
         wrapped = to_decimal_expr(expr)
-        # evaluate with Decimal only
         result = eval(wrapped, {"__builtins__": None}, {"Decimal": Decimal})
         expr = f"{Decimal(result):.{decimal_places}f}"
     except Exception:
@@ -66,48 +74,49 @@ def calculate():
     disp.setText(expr)
 
 
-# button factory
-def make_btn(text: str, r: int, c: int, colspan: int = 1):
+def make_button(text: str, row: int, col: int, colspan: int = 1, handler=None):
     btn = QPushButton(text)
-    btn.setFixedSize(60, 40)
-    layout.addWidget(btn, r, c, 1, colspan)
+    btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+    layout.addWidget(btn, row, col, 1, colspan)
+    if handler:
+        btn.clicked.connect(handler)
     return btn
 
 
-# digits & ops rows
-buttons = [
+# ── Digit & operator buttons ───────────────────────────────────────────────
+rows = [
     ("7", "8", "9", "/"),
     ("4", "5", "6", "*"),
     ("1", "2", "3", "-"),
 ]
-for i, row in enumerate(buttons, start=1):
-    for j, ch in enumerate(row):
-        make_btn(ch, i, j).clicked.connect(lambda _, s=ch: update(expr + s))
+for r, row in enumerate(rows, start=1):
+    for c, ch in enumerate(row):
+        make_button(ch, r, c, handler=lambda *args, s=ch: update_display(expr + s))
 
-# bottom row
-make_btn("0", 4, 0, colspan=2).clicked.connect(lambda _: update(expr + "0"))
-make_btn(".", 4, 2).clicked.connect(lambda _: update(expr + "."))
-make_btn("=", 4, 3).clicked.connect(lambda _: calculate())
-make_btn("+", 5, 3).clicked.connect(lambda _: update(expr + "+"))
-make_btn("C", 5, 0, colspan=2).clicked.connect(lambda _: update(""))
-make_btn("⌫", 5, 2).clicked.connect(lambda _: update(expr[:-1]))
+# ── Bottom row ─────────────────────────────────────────────────────────────
+make_button("0", 4, 0, colspan=2, handler=lambda *args: update_display(expr + "0"))
+make_button(".", 4, 2, handler=lambda *args: update_display(expr + "."))
+make_button("=", 4, 3, handler=lambda *args: calculate())
+make_button("+", 5, 3, handler=lambda *args: update_display(expr + "+"))
+make_button("C", 5, 0, colspan=2, handler=lambda *args: clear_display())
+make_button("⌫", 5, 2, handler=lambda *args: update_display(expr[:-1]))
 
 
-# keybindings
-def keypress(e):
+# ── Keyboard bindings ──────────────────────────────────────────────────────
+def keyPressEvent(e):
     k = e.key()
     if k == Qt.Key.Key_Return:
         calculate()
     elif k == Qt.Key.Key_Backspace:
-        update(expr[:-1])
+        update_display(expr[:-1])
     else:
-        text = e.text()
-        if text in "0123456789.+-*/":
-            update(expr + text)
+        txt = e.text()
+        if txt in "0123456789.+-*/":
+            update_display(expr + txt)
 
 
-win.keyPressEvent = keypress
+win.keyPressEvent = keyPressEvent
 
-# ── run ────────────────────────────────────────────────────────────────────────
+# ── Run the app ─────────────────────────────────────────────────────────────
 win.show()
 sys.exit(app.exec())
