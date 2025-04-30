@@ -1,78 +1,95 @@
-# Decimal Calculator
+# Decimal Calculator GUI
 
-A precision-first desktop calculator built with PySide6 and Python’s `decimal` module. All arithmetic uses `Decimal` for maximum accuracy, while results are displayed with configurable rounding and formatting via **`config.json`**.
+A cross-platform Python GUI calculator using the `decimal` module for precise arithmetic.  
+Configurable precision, formatting, and light/dark theme via `config.json`.
 
-## Features
+## Project structure
 
-- **Full-precision arithmetic** (configurable `precision`)  
-- **Display rounding** (`decimal_places`) with optional trailing-zero stripping  
-- **Thousands-separator formatting** (`use_commas`)  
-- **Parentheses support** (toggleable via `allow_parentheses`)  
-- **Calculation history** (navigate with ↑/↓ keys, up to `max_history` entries)  
-- **Light & dark themes** (`theme`)  
-- **Adjustable font size** (`font_size`) and **window dimensions** (`window_size`) 
+```
+.
+├── .gitignore
+├── .venv/              # Virtual environment
+├── config.json         # User settings (precision, decimal_places, theme)
+├── README.md
+├── TODO.md
+└── src/                # Source package
+    ├── __init__.py
+    ├── config.py
+    ├── core.py
+    ├── gui.py
+    └── main.py
+```
 
 ## Requirements
 
-- Python 3.x  
+- Python 3.8+  
 - [PySide6](https://pypi.org/project/PySide6/)  
-- [UV package manager](https://astral.sh/blog/uv) (for venv & dependency management) 
+- (Optional) [UV](https://github.com/jazzband/poetry) for environment & task management  
 
 ## Installation
 
-In PowerShell:
+```bash
+# create & activate venv
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
 
-```powershell
-# create & activate a .venv via UV
-uv venv
-
-# install Qt bindings
-uv add PySide6
+# install deps
+pip install PySide6
 ```
-
-## Running
-
-```powershell
-uv run main.py
-```
-
-The calculator window will launch immediately.
 
 ## Configuration
 
-Edit **`config.json`** in your project root to tweak behavior:
+Populate or adjust `config.json` at the project root. Example:
 
 ```json
 {
   "precision": 28,
   "decimal_places": 2,
-  "strip_trailing_zeros": true,
-  "use_commas": true,
-  "allow_parentheses": true,
-  "max_history": 50,
-  "theme": "light",
-  "font_size": 14,
-  "window_size": {
-    "width": 400,
-    "height": 300
-  }
+  "theme": "light"
 }
 ```
 
-- **`precision`**: total significant digits for all operations  
-- **`decimal_places`**: digits after the decimal point in the display  
-- **`strip_trailing_zeros`**: remove unnecessary `0`’s (e.g. `2.00` → `2`)  
-- **`use_commas`**: format results with thousands separators (e.g. `1,234.56`)  
-- **`allow_parentheses`**: enable or disable `(`…`)` in expressions  
-- **`max_history`**: number of past expressions to remember (↑/↓ navigation)  
-- **`theme`**: `"light"` or `"dark"` UI color scheme  
-- **`font_size`**: global font size for widgets  
-- **`window_size`**: initial window `width` and `height` in pixels 
+- **precision**: total significant digits for all calculations  
+- **decimal_places**: digits shown after the decimal point  
+- **theme**: `"light"` or `"dark"`
 
-## Logging
+## Running
 
-All code changes are appended to **`changes.log`** with ISO-format timestamps.
+- **With UV**  
+  ```bash
+  uv run --module src.main
+  ```
 
-## Contributing
+- **Directly**  
+  ```bash
+  python -m src.main
+  ```
 
-Feel free to open issues or submit pull requests to add features or fix bugs. 
+## Features
+
+- Decimal-based arithmetic for full precision  
+- Operations: `+`, `-`, `*`, `/`, `^` (exponent), parentheses  
+- Configurable precision & display format  
+- Light/dark theming  
+- Both button clicks and keyboard input  
+
+## Testing
+
+Add tests under a `tests/` folder and run with `pytest`.
+
+## Packaging
+
+Once you’ve refactored and tested, you can bundle into a single executable. For example with PyInstaller:
+
+```bash
+pip install pyinstaller
+pyinstaller --onefile -n DecimalCalc src/main.py
+```
+```
+
+---
+
+With these in place you’ll have a clean, well-structured codebase and up-to-date docs. Let me know if you’d like to add unit tests or CI next!
