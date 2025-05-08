@@ -6,8 +6,7 @@
   - instead of python main.py, we would use uv run main.py
   - even making virtual environments is done through using uv venv
 - GUI
-  - PySimpleGui
-- For calculations, convert all number types to Decimal type from decimal module in python
+  - PYQT6
 
 ## Code Generation
 - always use main.py as an entry point with the:
