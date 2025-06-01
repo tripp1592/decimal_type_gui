@@ -10,10 +10,8 @@
 
 ## Code Generation
 - always use main.py as an entry point with the:
-    ```
+    ```python
     if __name__ == "__main__:
         main()
     ```
     code block
-- put summaries of changes into a file in root project folder in changes.log
-  - please insert date in iso format and append a time for each change
